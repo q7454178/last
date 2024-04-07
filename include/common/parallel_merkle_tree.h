@@ -8,6 +8,7 @@
 #include "common/crypto.h"
 #include "common/phmap.h"
 #include <functional>
+#include <utility>
 #include <vector>
 
 namespace pmt {
@@ -38,8 +39,21 @@ namespace pmt {
         [[nodiscard]] virtual std::optional<HashString> Digest() const = 0;
     };
 
+       class mockDataBlock: public pmt::DataBlock {
+           public:
+               std::string data;
 
-    // Config is the configuration of Merkle Tree.
+               [[nodiscard]] std::optional<pmt::HashString> Digest() const override {
+                   return util::OpenSSLSHA256::generateDigest(data.data(), data.size());
+               }
+               mockDataBlock()=default;
+               explicit mockDataBlock(std::string  s):data(std::move(s)) {
+
+               }
+           };
+
+
+           // Config is the configuration of Merkle Tree.
     struct Config {
         // HashFuncType is the signature of the hash functions used for Merkle Tree generation.
         // Customizable hash function used for tree generation.

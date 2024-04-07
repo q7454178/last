@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <list>
+
+#include "common/parallel_merkle_tree.h"
 #include "common/phmap.h"
 
 namespace peer::db {
@@ -22,6 +25,22 @@ namespace peer::db {
             std::vector<std::string> deletes;
         };
 
+        class MyExecutor {
+        public:
+          void execute(WriteBatch batch);
+          void syncWriteBatch();
+          struct Node{
+            pmt::HashString merkleRoot;
+            std::vector<pmt::Proof> proofs;
+            std::unique_ptr<pmt::MerkleTree> merkleTree;
+            std::vector<std::unique_ptr<pmt::DataBlock>> dataBlocks;
+          };
+          std::list<Node> chain;
+          WriteBatch lastBatch;
+          std::unordered_map<std::string, std::string> store;
+          pmt::Config config;
+        };
+
         static std::unique_ptr<PHMapConnection> NewConnection(const std::string& dbName) {
             auto db = std::unique_ptr<PHMapConnection>(new PHMapConnection);
             db->_dbName = dbName;
@@ -30,12 +49,16 @@ namespace peer::db {
 
         [[nodiscard]] const std::string& getDBName() const { return _dbName; }
 
+
         bool syncWriteBatch(const std::function<bool(WriteBatch* batch)>& callback) {
             WriteBatch batch;
             if (!callback(&batch)) {
                 return false;
             }
 
+            MyExecutor e;
+            e.execute(batch);
+            e.syncWriteBatch();
             if (!std::ranges::all_of(batch.writes.begin(),
                                      batch.writes.end(),
                                      [this](auto&& it) { return syncPut(std::move(it.first), std::move(it.second)); })) {
@@ -45,6 +68,9 @@ namespace peer::db {
             for (auto& it: batch.deletes) {
                 syncDelete(std::move(it));
             }
+
+
+
             return true;
         }
 

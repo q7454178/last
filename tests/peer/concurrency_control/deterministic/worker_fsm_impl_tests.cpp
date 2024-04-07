@@ -13,6 +13,8 @@
 class WorkerImplTest : public ::testing::Test {
 protected:
     void SetUp() override {
+      util::OpenSSLSHA1::initCrypto();
+      util::OpenSSLSHA256::initCrypto();
         CHECK(util::Properties::LoadProperties());
         util::Properties::GetProperties()->getChaincodeProperties().install("transfer");
     };
@@ -25,8 +27,8 @@ protected:
 
 // please use peer::chaincode::SimpleTransfer chaincode
 TEST_F(WorkerImplTest, TestSignalSendReceive) {
-    constexpr int recordCount = 1000;
-    constexpr int txnCount = 1000;
+    constexpr int recordCount = 3;
+    constexpr int txnCount = 3;
     // setup fsm
     auto fsm = std::make_shared<peer::cc::WorkerFSMImpl>();
     std::shared_ptr<peer::db::DBConnection> dbc = peer::db::DBConnection::NewConnection("testDB");

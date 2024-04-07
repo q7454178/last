@@ -659,10 +659,10 @@ TEST_F(PMTreeTest, TestMerkleTree_Verify) {
         for (auto i = 0; i < tt.blockSize; i++) {
             auto got = mt->Verify(*(*blocks)[i], mt->getProofs()[i]);
             if ((got == std::nullopt) != tt.wantErr) {
-                ASSERT_TRUE(false) << "Verify() error, want: " << tt.wantErr;
+              ASSERT_TRUE(false) << "Verify() error, want: " << tt.wantErr;
             }
             if (got.value() != tt.want) {
-                ASSERT_TRUE(false) << "Verify(), want: " << tt.want;
+              ASSERT_TRUE(false) << "Verify(), want: " << tt.want;
             }
         }
     }
