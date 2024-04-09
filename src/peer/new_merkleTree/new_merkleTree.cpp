@@ -45,5 +45,60 @@ namespace peer::db {
     if (!status.ok()) {
       LOG(ERROR) << "cant open";
     }
+    for (const auto& w : store) {
+      std::string key =  w.first;
+      std::string value = w.second;
+      leveldb::Status put_status = merkledb->Put(leveldb::WriteOptions(), key, value);
+      if (!put_status.ok()) {
+        LOG(ERROR) << "cant write";
+      }
+    }
+    delete merkledb;
+  }
+
+  void PHMapConnection::MyExecutor::deleteDB() {
+    leveldb::DB* deletedb;
+    leveldb::Options options;
+    options.create_if_missing = true;
+    leveldb::Status status = leveldb::DB::Open(options, "/home/user/CLionProjects/mass_bft/searchdb", &deletedb);
+    if (!status.ok()) {
+      LOG(ERROR) << "cant delete";
+    }
+    leveldb::Iterator* it = deletedb->NewIterator(leveldb::ReadOptions());
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+      deletedb->Delete(leveldb::WriteOptions(), it->key());
+    }
+    if (!it->status().ok()) {
+      LOG(ERROR) << "cant delete";
+    }
+    delete it;
+    delete deletedb;
+  }
+
+  std::string PHMapConnection::MyExecutor::readDB(std::string key) {
+    leveldb::DB* readdb;
+    leveldb::Options options;
+    options.create_if_missing = true;
+    std::string message;
+    leveldb::Status open_status = leveldb::DB::Open(options, "/home/user/CLionProjects/mass_bft/searchdb", &readdb);
+    leveldb::Status get_status = readdb->Get(leveldb::ReadOptions(), key, &message);
+
+    if (get_status.ok()) {
+      delete readdb;
+      return  message;
+    }
+    else {
+      delete readdb;
+      return "cant find";
+    }
+  }
+
+  std::optional<bool> PHMapConnection::MyExecutor::Verify(const pmt::DataBlock& dataBlock, const pmt::Proof& proof) {
+    if (!chain.empty()) {
+      Node& lastNode = chain.back();
+      return lastNode.merkleTree->Verify(dataBlock,proof,lastNode.merkleRoot);
+    } else {
+      std::cout << "The list is empty." << std::endl;
+    }
   }
 }
