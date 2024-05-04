@@ -30,14 +30,26 @@ namespace peer::db {
           void execute(WriteBatch batch);
           void syncWriteBatch();
           void deleteDB();
-          std::optional<bool> Verify(const pmt::DataBlock &dataBlock, const pmt::Proof &proof);
-          std::string readDB(std::string key);
+          //std::optional<bool> Verify(const pmt::DataBlock &dataBlock, const pmt::Proof &proof);
+          struct returned{
+            std::optional<bool> istrue;
+            std::string message;
+          };
+          returned readDB(std::string key);
           struct Node{
             pmt::HashString merkleRoot;
-            std::vector<pmt::Proof> proofs;
+            //std::vector<pmt::Proof> proofs;
             std::unique_ptr<pmt::MerkleTree> merkleTree;
             std::vector<std::unique_ptr<pmt::DataBlock>> dataBlocks;
           };
+          struct Record {
+            std::string timestamp;
+            std::string key;
+            std::string value;
+            bool isLatest;
+          };
+          void writeToCSV(const std::string& filename, std::vector<Record>& data);
+          void updateCSV(const std::string& filename);
           std::list<Node> chain;
           WriteBatch lastBatch;
           std::unordered_map<std::string, std::string> store;
@@ -63,7 +75,6 @@ namespace peer::db {
             e.execute(batch);
             e.syncWriteBatch();
             e.deleteDB();
-            std::string read=e.readDB("2");
             if (!std::ranges::all_of(batch.writes.begin(),
                                      batch.writes.end(),
                                      [this](auto&& it) { return syncPut(std::move(it.first), std::move(it.second)); })) {
