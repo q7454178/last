@@ -63,8 +63,8 @@ namespace peer::db {
       re.value=x.second;
       reall.push_back(re);
     }
-//    updateCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv");
-//    writeToCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv", reall);
+  // updateCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv");
+   //writeToCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv", reall);
 
   }
 
@@ -109,7 +109,7 @@ namespace peer::db {
           const pmt::Proof& proof = *proofCheck;
           returned.istrue = lastNode.merkleTree->Verify(dataBlock, proof, lastNode.merkleRoot);
         } else {
-          returned.message = "GenerateProof failed";
+          returned.message = message;
           returned.istrue = false;
         }
       } else {
