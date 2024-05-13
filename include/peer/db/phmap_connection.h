@@ -21,6 +21,8 @@ namespace peer::db {
                 deletes.push_back(std::move(key));
             }
 
+
+
             std::vector<std::pair<std::string, std::string>> writes;
             std::vector<std::string> deletes;
         };
@@ -43,13 +45,16 @@ namespace peer::db {
             std::vector<std::unique_ptr<pmt::DataBlock>> dataBlocks;
           };
           struct Record {
-            std::string timestamp;
+            std::string proof;
             std::string key;
             std::string value;
             bool isLatest;
           };
           void writeToCSV(const std::string& filename, std::vector<Record>& data);
           void updateCSV(const std::string& filename);
+          bool getstore();
+          bool putdb();
+          bool putcsv();
           std::list<Node> chain;
           WriteBatch lastBatch;
           std::unordered_map<std::string, std::string> store;

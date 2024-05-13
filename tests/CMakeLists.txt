@@ -9,10 +9,17 @@ option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
 # ---- Create binary ----
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER sources EXCLUDE REGEX "javatest.cpp")
 add_executable(${PROJECT_NAME} ${sources}
         peer/concurrency_control/new_merkleTree_test.cpp)
 target_link_libraries(${PROJECT_NAME} gtest gtest_main gmock NBP ${COMMON_DEPENDENCIES})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20)
+
+add_executable(javatest
+        javatest/javatest.cpp)
+target_link_libraries(javatest NBP ${COMMON_DEPENDENCIES})
+
+set_target_properties(javatest PROPERTIES CXX_STANDARD 20)
 
 # enable compiler warnings
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
@@ -28,6 +35,8 @@ include(GoogleTest)
 gtest_discover_tests(${PROJECT_NAME})
 
 # ---- code coverage ----
+
+SET(ENABLE_TEST_COVERAGE OFF)
 
 if(ENABLE_TEST_COVERAGE)
   target_compile_options(NBP PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)

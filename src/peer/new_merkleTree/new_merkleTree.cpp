@@ -8,13 +8,24 @@
 #include <fstream>
 #include <vector>
 namespace peer::db {
-  void PHMapConnection::MyExecutor::execute(WriteBatch batch) { lastBatch = std::move(batch); }
+  void PHMapConnection::MyExecutor::execute(WriteBatch batch) {
+    lastBatch.deletes= std::move(batch.deletes);
+    lastBatch.writes= std::move(batch.writes);
+//        lastBatch = std::move(batch);
+//    int a=1;
+    return;
+  }
   void PHMapConnection::MyExecutor::syncWriteBatch() {
+    store.clear();
     for (const auto& write : lastBatch.writes) {
       store.insert({write.first, write.second});
       // auto block = std::make_unique<pmt::mockDataBlock>(write.first + write.second);
       // dataBlocks.push_back(std::move(block));
     }
+    if(!putdb())
+      std::cout<<"store error";
+    if(!getstore())
+      std::cout<<"get store error";
     for (auto& de : lastBatch.deletes) {
       auto it = store.find(de);
       if (it != store.end()) {
@@ -35,37 +46,9 @@ namespace peer::db {
     config.LeafGenParallel = true;
     node.merkleTree = pmt::MerkleTree::New(config, node.dataBlocks);
     node.merkleRoot = node.merkleTree->getRoot();
-    // node.proofs=node.merkleTree->getProofs();
-    chain.push_back(std::move(node));
-    leveldb::DB* merkledb;
-    leveldb::Options options;
-    options.create_if_missing = true;
-    leveldb::Status status
-        = leveldb::DB::Open(options, "/home/user/CLionProjects/mass_bft/searchdb", &merkledb);
-    if (!status.ok()) {
-      LOG(ERROR) << "cant open";
-    }
-    for (const auto& w : store) {
-      std::string key = w.first;
-      std::string value = w.second;
-      leveldb::Status put_status = merkledb->Put(leveldb::WriteOptions(), key, value);
-      if (!put_status.ok()) {
-        LOG(ERROR) << "cant write";
-      }
-    }
-    delete merkledb;
-    Record re;
-    std::vector<Record> reall;
-    for(const auto& x:store)
-    {
-      re.timestamp="1";
-      re.key=x.first;
-      re.value=x.second;
-      reall.push_back(re);
-    }
-  // updateCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv");
-   //writeToCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv", reall);
-
+   chain.push_back(std::move(node));
+   if(!putcsv())
+     std::cout<<"put to csv error";
   }
 
   void PHMapConnection::MyExecutor::deleteDB() {
@@ -139,14 +122,14 @@ namespace peer::db {
 
     // 如果文件为空，写入表头
     if (isEmpty) {
-      file << "timestamp,key,value,is_latest" << std::endl;
+      file << "proof,key,value,is_latest" << std::endl;
     }
 
     // 设置本次传入记录的最新标志为 true，并写入 CSV 文件
     for (auto& record : data) {
       record.isLatest = true;
       // 写入记录到 CSV 文件
-      file << record.timestamp << "," << record.key << "," << record.value << "," << (record.isLatest ? "1" : "0") << std::endl;
+      file << record.proof << "," << record.key << "," << record.value << "," << (record.isLatest ? "1" : "0") << std::endl;
     }
 
     file.close();
@@ -183,7 +166,7 @@ namespace peer::db {
       lines.push_back(line);
       Record record;
       std::istringstream iss(line);
-      std::getline(iss, record.timestamp, ',');
+      std::getline(iss, record.proof, ',');
       std::getline(iss, record.key, ',');
       std::getline(iss, record.value, ',');
       record.isLatest = false;  // 将之前数据的最新标志设为 false
@@ -199,12 +182,78 @@ namespace peer::db {
       return;
     }
 
-    outFile << "timestamp,key,value,is_latest" << std::endl;
+    outFile << "proof,key,value,is_latest" << std::endl;
 
     // 写入更新后的数据到 CSV 文件
     for (const auto& record : data) {
-      outFile << record.timestamp << "," << record.key << "," << record.value << "," << (record.isLatest ? "1" : "0") << std::endl;
+      outFile << record.proof << "," << record.key << "," << record.value << "," << (record.isLatest ? "1" : "0") << std::endl;
     }
     outFile.close();
+  }
+
+  bool PHMapConnection::MyExecutor::getstore() {
+    std::string dbPath = "/home/user/CLionProjects/mass_bft/searchdb";
+
+    // 打开 LevelDB 数据库
+    leveldb::DB* storedb;
+    leveldb::Options options;
+    options.create_if_missing = false; // 如果数据库不存在是否创建新的
+    leveldb::Status status = leveldb::DB::Open(options, dbPath, &storedb);
+
+    if (!status.ok()) {
+      std::cerr << "Error opening database: " << status.ToString() << std::endl;
+      return false;
+    }
+    leveldb::Iterator* it = storedb->NewIterator(leveldb::ReadOptions());
+    store.clear();
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+      store[it->key().ToString()] = it->value().ToString();
+    }
+    delete it;
+    delete storedb;
+    return true;
+  }
+  bool PHMapConnection::MyExecutor::putdb() {
+    leveldb::DB* merkledb;
+    leveldb::Options options;
+    options.create_if_missing = false;
+    leveldb::Status status
+        = leveldb::DB::Open(options, "/home/user/CLionProjects/mass_bft/searchdb", &merkledb);
+    if (!status.ok()) {
+      LOG(ERROR) << "cant open"<< status.ToString();
+      return false;
+    }
+    for (const auto& w : store) {
+      leveldb::WriteOptions writeOptions;
+//      writeOptions.sync = true;
+      std::string key = w.first;
+      std::string value = w.second;
+      leveldb::Status put_status = merkledb->Put(writeOptions, key, value);
+      if (!put_status.ok()) {
+        LOG(ERROR) << "cant write";
+        return false;
+      }
+    }
+    delete merkledb;
+    return true;
+  }
+  bool PHMapConnection::MyExecutor::putcsv() {
+    Record re;
+    std::vector<Record> reall;
+    Node& lastNode = chain.back();
+    for(const auto& x:store)
+    {
+      std::unique_ptr<pmt::mockDataBlock> blockPtr
+          = std::make_unique<pmt::mockDataBlock>(x.first + x.second);
+      pmt::DataBlock& dataBlock = *blockPtr;
+      std::string str=lastNode.merkleTree->GenerateProof(dataBlock)->toString();
+      re.proof=str;
+      re.key=x.first;
+      re.value=x.second;
+      reall.push_back(re);
+    }
+    updateCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv");
+    writeToCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv", reall);
+    return true;
   }
 }

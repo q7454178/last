@@ -11,7 +11,6 @@ protected:
 
   void TearDown() override {
     executor.chain.clear();
-    executor.deleteDB();
   }
   peer::db::PHMapConnection::MyExecutor executor;
   peer::db::PHMapConnection::WriteBatch batch;
@@ -28,8 +27,8 @@ TEST_F(MyExecutorTest, ExecuteTest) {
 }
 
 TEST_F(MyExecutorTest, SyncWriteBatchTest) {
-  constexpr int recordCount = 3;
-  for (int i=0; i<recordCount; i++) {
+  constexpr int recordCount = 5;
+  for (int i=3; i<recordCount; i++) {
     batch.Put(std::to_string(i), "0");
   }
   executor.execute(batch);
@@ -68,6 +67,29 @@ TEST_F(MyExecutorTest, ReadDBTestFalse) {
   auto result = executor.readDB(key);
   ASSERT_EQ(result.message,"1");
   ASSERT_FALSE(result.istrue.value());
+}
+
+TEST(a1,a11){
+  std::vector<std::pair<std::string, std::string>> writes{{"a","b"}};
+  std::vector<std::pair<std::string, std::string>> writes2{{"a1","b1"}};
+  writes=std::move(writes2);
+  int a=1;
+}
+
+TEST_F(MyExecutorTest, SyncWriteBatchTest1) {
+  constexpr int recordCount = 3;
+  for (int i = 0; i < recordCount; i++) {
+    batch.Put(std::to_string(i), "0");
+  }
+  executor.execute(batch);
+  executor.syncWriteBatch();
+  for (int i = 3; i < 6; i++) {
+    batch.Put(std::to_string(i), "0");
+  }
+  executor.execute(batch);
+  executor.syncWriteBatch();
+  peer::db::PHMapConnection::MyExecutor::Node& lastNode = executor.chain.back();
+  ASSERT_FALSE(lastNode.merkleRoot.empty());
 }
 
 int main(int argc, char **argv) {
