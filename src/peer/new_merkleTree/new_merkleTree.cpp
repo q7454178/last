@@ -1,12 +1,14 @@
 //
 // Created by user on 24-3-31.
 //
+#include <bitset>
+#include <fstream>
 #include <iostream>
 #include <utility>
+#include <vector>
+
 #include "leveldb/db.h"
 #include "peer/db/phmap_connection.h"
-#include <fstream>
-#include <vector>
 namespace peer::db {
   void PHMapConnection::MyExecutor::execute(WriteBatch batch) {
     lastBatch.deletes= std::move(batch.deletes);
@@ -256,4 +258,112 @@ namespace peer::db {
     writeToCSV("/home/user/CLionProjects/mass_bft/searchdb/search.csv", reall);
     return true;
   }
-}
+  pmt::Proof PHMapConnection::MyExecutor::fromString(const std::string& str){
+    pmt::Proof proof;
+    std::string pathStr = str.substr(0, 8);
+    std::bitset<8> path(std::stoul(str.substr(0, 8), nullptr, 2));
+    std::bitset<32> extended(path.to_ulong());
+    uint32_t uintNum = static_cast<uint32_t>(extended.to_ulong());
+    std::stringstream ss(str.substr(9)); // Start after the '|'
+    std::string item;
+    std::vector<const pmt::HashString*> Siblings{};
+    while (std::getline(ss, item, '*')) {
+      if (!item.empty()) {
+        std::array<uint8_t, 32>* k=new std::array<uint8_t, 32>();
+
+        std::string reversedData = OpenSSL::stringToBytes(item);
+        std::copy_n(reversedData.begin(),32,k->begin());
+        Siblings.push_back(k);
+      }
+    }
+    proof.Siblings=Siblings;
+    proof.Path=uintNum;
+    return proof;
+  }
+  std::vector<std::string> PHMapConnection::MyExecutor::splitString(const std::string& str, char delim) {
+    std::vector<std::string> tokens;
+    std::stringstream ss(str);
+    std::string token;
+    while (std::getline(ss, token, delim)) {
+      tokens.push_back(token);
+    }
+    return tokens;
+  }
+  std::optional<bool> PHMapConnection::MyExecutor::toverify(std::string str,pmt::Proof proof) {
+    std::string dbPath = "/home/user/CLionProjects/mass_bft/searchdb";
+
+    // 打开 LevelDB 数据库
+    leveldb::DB* storedb;
+    leveldb::Options options;
+    options.create_if_missing = false; // 如果数据库不存在是否创建新的
+    leveldb::Status status = leveldb::DB::Open(options, dbPath, &storedb);
+
+    if (!status.ok()) {
+      std::cerr << "Error opening database: " << status.ToString() << std::endl;
+      return false;
+    }
+    leveldb::Iterator* it = storedb->NewIterator(leveldb::ReadOptions());
+    store.clear();
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+      store[it->key().ToString()] = it->value().ToString();
+    }
+    delete it;
+    delete storedb;
+    Node node;
+    for (auto& construct : store) {
+      auto block = std::make_unique<pmt::mockDataBlock>(construct.first + construct.second);
+      node.dataBlocks.push_back(std::move(block));
+    }
+
+    config.NumRoutines = 4;
+    config.Mode = pmt::ModeType::ModeProofGenAndTreeBuild;
+    config.RunInParallel = true;
+    config.LeafGenParallel = true;
+    node.merkleTree = pmt::MerkleTree::New(config, node.dataBlocks);
+    node.merkleRoot=node.merkleTree->getRoot();
+    std::unique_ptr<pmt::mockDataBlock> blockPtr
+        = std::make_unique<pmt::mockDataBlock>(str);
+    const pmt::DataBlock& dataBlock = *blockPtr;
+    return node.merkleTree->Verify(dataBlock,proof,node.merkleRoot);
+  }
+  bool PHMapConnection::MyExecutor::iseaqul(std::string str1,std::string str2) {
+    pmt::Proof proof1,proof2;
+    std::string dbPath = "/home/user/CLionProjects/mass_bft/searchdb";
+
+    // 打开 LevelDB 数据库
+    leveldb::DB* storedb;
+    leveldb::Options options;
+    options.create_if_missing = false; // 如果数据库不存在是否创建新的
+    leveldb::Status status = leveldb::DB::Open(options, dbPath, &storedb);
+
+    if (!status.ok()) {
+      std::cerr << "Error opening database: " << status.ToString() << std::endl;
+      return false;
+    }
+    leveldb::Iterator* it = storedb->NewIterator(leveldb::ReadOptions());
+    store.clear();
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+      store[it->key().ToString()] = it->value().ToString();
+    }
+    delete it;
+    delete storedb;
+    Node node;
+    for (auto& construct : store) {
+      auto block = std::make_unique<pmt::mockDataBlock>(construct.first + construct.second);
+      node.dataBlocks.push_back(std::move(block));
+    }
+
+    config.NumRoutines = 4;
+    config.Mode = pmt::ModeType::ModeProofGenAndTreeBuild;
+    config.RunInParallel = true;
+    config.LeafGenParallel = true;
+    node.merkleTree = pmt::MerkleTree::New(config, node.dataBlocks);
+    node.merkleRoot=node.merkleTree->getRoot();
+    std::unique_ptr<pmt::mockDataBlock> blockPtr
+        = std::make_unique<pmt::mockDataBlock>(str2);
+    const pmt::DataBlock& dataBlock = *blockPtr;
+    proof2=node.merkleTree->GenerateProof(dataBlock).value();
+    proof1= fromString(str1);
+    return proof1.equal(proof2);
+  }
+  }

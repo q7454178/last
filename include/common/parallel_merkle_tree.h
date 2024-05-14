@@ -84,7 +84,6 @@ namespace pmt {
                 return true;
             }();
         }
-
         [[nodiscard]] std::string toString() const;
     };
 

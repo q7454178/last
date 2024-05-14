@@ -77,19 +77,31 @@ TEST(a1,a11){
 }
 
 TEST_F(MyExecutorTest, SyncWriteBatchTest1) {
-  constexpr int recordCount = 3;
-  for (int i = 0; i < recordCount; i++) {
-    batch.Put(std::to_string(i), "0");
-  }
-  executor.execute(batch);
-  executor.syncWriteBatch();
-  for (int i = 3; i < 6; i++) {
-    batch.Put(std::to_string(i), "0");
-  }
   executor.execute(batch);
   executor.syncWriteBatch();
   peer::db::PHMapConnection::MyExecutor::Node& lastNode = executor.chain.back();
   ASSERT_FALSE(lastNode.merkleRoot.empty());
+}
+
+TEST_F(MyExecutorTest, Prooftest1){
+  pmt::Proof proof=executor.fromString("00000010**4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5*96a2378a537a5379ca61c1fd65023d593c889cb1417b2812c491f754815ef874*dd1640804928f547325784060380686434a48d9fa90b9786961223423def4016*");
+  ASSERT_TRUE(executor.toverify("00",proof).value());
+}
+TEST_F(MyExecutorTest, changedb){
+  leveldb::DB* merkledb;
+  leveldb::Options options;
+  options.create_if_missing = false;
+  leveldb::Status status
+      = leveldb::DB::Open(options, "/home/user/CLionProjects/mass_bft/searchdb", &merkledb);
+  if (!status.ok()) {
+    LOG(ERROR) << "cant open"<< status.ToString();
+  }
+  leveldb::WriteOptions writeOptions;
+  leveldb::Status put_status = merkledb->Put(writeOptions, "2", "0");
+  if (!put_status.ok()) {
+    LOG(ERROR) << "cant write";
+  }
+  delete merkledb;
 }
 
 int main(int argc, char **argv) {

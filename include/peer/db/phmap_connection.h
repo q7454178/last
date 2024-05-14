@@ -59,6 +59,10 @@ namespace peer::db {
           WriteBatch lastBatch;
           std::unordered_map<std::string, std::string> store;
           pmt::Config config;
+          pmt::Proof fromString(const std::string& str);
+          std::vector<std::string> splitString(const std::string& str, char delim);
+          std::optional<bool> toverify(std::string str,pmt::Proof proof);
+          bool iseaqul(std::string str1,std::string str2);
         };
 
         static std::unique_ptr<PHMapConnection> NewConnection(const std::string& dbName) {

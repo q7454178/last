@@ -23,12 +23,16 @@ namespace pmt {
 
     std::string Proof::toString() const {
         std::stringstream buf;
-        //buf << "Path: " << std::bitset<8>(this->Path) <<", Siblings: ";
-        buf << "Path: " << std::bitset<8>(this->Path) <<"| Siblings: ";
+//        //buf << "Path: " << std::bitset<8>(this->Path) <<", Siblings: ";
+//        buf << "Path: " << std::bitset<8>(this->Path) <<"| Siblings: ";
+//        for(auto i=0; i<(int)Siblings.size(); i++) {
+//           // buf << "\n\t" << "Siblings depth: "<< Siblings.size()-i << "\t" << util::OpenSSLSHA256::toString(*Siblings[i]);
+//           buf<< "#" << "Siblings depth: "<< Siblings.size()-i << "*" << util::OpenSSLSHA256::toString(*Siblings[i]) ;
+        buf << std::bitset<8>(this->Path) <<"*";
         for(auto i=0; i<(int)Siblings.size(); i++) {
-           // buf << "\n\t" << "Siblings depth: "<< Siblings.size()-i << "\t" << util::OpenSSLSHA256::toString(*Siblings[i]);
-           buf<< "#" << "Siblings depth: "<< Siblings.size()-i << "*" << util::OpenSSLSHA256::toString(*Siblings[i]) ;
+          buf<< "*" << util::OpenSSLSHA256::toString(*Siblings[i]) ;
         }
+        buf<<"*";
         return buf.str();
     }
 
@@ -327,4 +331,5 @@ namespace pmt {
                 .Path = path,
         };
     }
+
 }
