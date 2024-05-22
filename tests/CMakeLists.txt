@@ -11,7 +11,8 @@ option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 list(FILTER sources EXCLUDE REGEX "javatest.cpp")
 add_executable(${PROJECT_NAME} ${sources}
-        peer/concurrency_control/new_merkleTree_test.cpp)
+        peer/concurrency_control/new_merkleTree_test.cpp
+        peer/concurrency_control/all_new_search_test.cpp)
 target_link_libraries(${PROJECT_NAME} gtest gtest_main gmock NBP ${COMMON_DEPENDENCIES})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20)
 

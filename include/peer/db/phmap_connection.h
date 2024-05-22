@@ -83,7 +83,6 @@ namespace peer::db {
             MyExecutor e;
             e.execute(batch);
             e.syncWriteBatch();
-            e.deleteDB();
             if (!std::ranges::all_of(batch.writes.begin(),
                                      batch.writes.end(),
                                      [this](auto&& it) { return syncPut(std::move(it.first), std::move(it.second)); })) {
